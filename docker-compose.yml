@@ -1,0 +1,105 @@
+# Started using https://www.digitalocean.com/community/tutorials/how-to-set-up-laravel-nginx-and-mysql-with-docker-compose
+# Then added additional commonly required services
+version: '3'
+services:
+
+  # PHP Application Service
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    image: ajaxray.com/php72
+    container_name: app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  # Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8080:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  # MariaDB Service - drop-in replacement of MySQL for performance, stability, and openness
+  # Made by the original developers of MySQL and guaranteed to stay open source
+  # If you want to connect from any external SQL Client, use port: 33061
+  db:
+    image: mariadb:10.2
+    container_name: mariadb
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "33061:3306"
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: '123456'
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+
+  # Adminer - Database management (lighter alternative of PHPMyAdmin)
+  # If you are planning to use any other mysql client app, you may not require this
+  # Go to http://localhost:8081/ to access
+  # Check https://hub.docker.com/_/adminer/ for loading plugin or changing theme
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: always
+    ports:
+      - 8081:8080
+    networks:
+      - app-network
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: 123456
+      ADMINER_DESIGN: pappu687
+
+  # MailHog - Web and API based SMTP testing
+  # Replacement of mailcatcher, MailTrap etc.
+  # Update .env params:
+  #     MAIL_HOST=mailhog
+  #     MAIL_PORT=1025
+  # Done! Your inbox for all email is ready at http://localhost:8025
+  # Comment out the service if you don't need email
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    networks:
+      - app-network
+    ports:
+      - 1025:1025 # smtp server
+      - 8025:8025 # web ui
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
