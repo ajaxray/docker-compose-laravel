@@ -36,9 +36,10 @@ git clone https://github.com/ajaxray/docker-compose-laravel.git /tmp/docker-comp
 
 #### 2. Copy required files to your project
 
-Now, copy `docker-compose.yml` file and `docker` directory to project root of your laravel application
+Now, copy `docker-compose.yml` file and `docker` directory to project root of your laravel application.
 ```shell script
 cp -vr /tmp/docker-compose-laravel/docker* /path/to/my-project/
+cd /path/to/my-project/
 ```
 
 #### 3. Adjust `.env` variables 
@@ -46,8 +47,8 @@ cp -vr /tmp/docker-compose-laravel/docker* /path/to/my-project/
 Edit the `.env` file in project root and set the following values:
 ```ini
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=db
+DB_HOST=db
+DB_PORT=3306
 DB_DATABASE=laravel
 DB_USERNAME=appuser
 DB_PASSWORD=123456
@@ -61,7 +62,6 @@ Alternatively you may update parameters in `docker-compose.yml` file and set `.e
  
 Start containers from project root directory 
 ```shell script
-cd /path/to/my-project/
 docker-compose up -d
 # Check service status
 docker-compose ps
@@ -79,13 +79,9 @@ But we have one more step before checking the live application.
 These are generic steps to prepare any Laravel application, not specific to this Docker setup.
 But you need to run them from inside appropriate container.   
 (You may ignore any of the following commands if not required for your project.)
-  
-
-**Prepare Application**
 
 ```shell script
 docker-compose exec app composer install --no-interaction --no-suggest --no-progress --prefer-dist
-docker-compose exec app composer dump-autoload -o
 docker-compose exec app php artisan key:generate
 docker-compose exec app php artisan migrate
 docker-compose exec app php artisan db:seed
@@ -96,21 +92,6 @@ docker-compose exec app npm run dev
 
 # Cache configuration. Recommended for production environment
 docker-compose exec app php artisan config:cache
-```
-
-**Prepare Database**
-
-```shell script
-docker-compose exec db bash
-# > Inside db container
-mysql -u root -p
-# pass is: 123456
-# >> Inside mysql client
-MariaDB [(none)]> GRANT ALL ON laravel.* TO 'appuser'@'%' IDENTIFIED BY '123456';
-MariaDB [(none)]> FLUSH PRIVILEGES;
-MariaDB [(none)]> EXIT;
-# > Back in db container
-exit
 ```
 
 
