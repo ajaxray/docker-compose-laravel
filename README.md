@@ -3,7 +3,7 @@ docker-compose for Laravel 6.x
 
 Ready made development environment for Laravel 6.x using docker-compose.
 
-Don't spent hours managing dependencies anymore. Just docker, docker-compose and git - your laravel project will be up and running in minutes!
+Don't spent hours managing dependencies anymore. Just docker-compose and git - your laravel project will be up and running in minutes!
 
 What's Included?
 ------------------------  
@@ -11,13 +11,13 @@ What's Included?
 The environment is composed with the following services -
 
 - PHP 7.2 with fpm
-    - Including all common dependencies for Laravel application
+    - All common dependencies for Laravel application
     - [Composer]
     - nodejs and npm for [Vue.js] and [Laravel-Mix]
-    - ImageMagick + ghostscript (default) or gd (uncomment section) for image manipulation
-- [Nginx] - web server
-- [MariaDB] 10.2 - Database
-- [Adminer] - light-weight database management frontend
+    - ImageMagick + ghostscript (default) or gd (require uncommenting) for image operations
+- [Nginx] - Web server
+- [MariaDB] 10.2 - Database (drop-in replacement for MySQL with performance, stability, and openness)
+- [Adminer] - Light-weight database management frontend
 - [MailHog] - Receive emails for dev environment (Web and API based SMTP service)
 
 How to use
@@ -32,8 +32,9 @@ You can clone it anywhere in your local machine or download as zip file.
 git clone https://github.com/ajaxray/docker-compose-laravel.git /tmp/docker-compose-laravel  
 ```
 
+> If you want to try with fresh Laravel project, check "Starting with fresh Laravel" below in Notes section before proceeding to the next step.
+
 #### 2. Copy required files to your project
-_If you want to try with fresh Laravel project, check "Starting with fresh Laravel" below in Notes section before proceeding to this step._
 
 Now, copy `docker-compose.yml` file and `docker` directory to project root of your laravel application
 ```shell script
@@ -42,7 +43,7 @@ cp -vr /tmp/docker-compose-laravel/docker* /path/to/my-project/
 
 #### 3. Adjust `.env` variables 
 
-Now, edit the .env file and set the following values:
+Edit the `.env` file in project root and set the following values:
 ```ini
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -56,51 +57,66 @@ MAIL_PORT=1025
 ```  
 Alternatively you may update parameters in `docker-compose.yml` file and set `.env` parameters accordingly.
 
-#### 4. Get up and running 
+#### 4. Get up and running
+ 
+Start containers from project root directory 
 ```shell script
-cd /your/laravel-project/
+cd /path/to/my-project/
 docker-compose up -d
 # Check service status
 docker-compose ps
 ```
 
-If everything went OK, you should see something like this
+If everything went OK, you should see something like this -
 
 ![docker-compose laravel screenshot](./screenshot.png) 
 
-#### 5. Additional Preparation 
+That means your Development environment is ready! 
+But we have one more step before checking the live application. 
 
-##### Prepare Application
-Common steps 
+#### 5. Generic Preparation for Laravel application 
+
+These are generic steps to prepare any Laravel application, not specific to this Docker setup.
+But you need to run them from inside appropriate container.   
+(You may ignore any of the following commands if not required for your project.)
+  
+
+**Prepare Application**
+
 ```shell script
-docker-compose exec app composer install
+docker-compose exec app composer install --no-interaction --no-suggest --no-progress --prefer-dist
+docker-compose exec app composer dump-autoload -o
 docker-compose exec app php artisan key:generate
-docker-compose exec app php artisan config:cache
 docker-compose exec app php artisan migrate
+docker-compose exec app php artisan db:seed
 
 # Required for Vue.js and laravel-mix
 docker-compose exec app npm install
 docker-compose exec app npm run dev
+
+# Cache configuration. Recommended for production environment
+docker-compose exec app php artisan config:cache
 ```
 
-##### Prepare Database
+**Prepare Database**
 
-Let's grant full permission to our database User
 ```shell script
 docker-compose exec db bash
-# Inside db container
+# > Inside db container
 mysql -u root -p
 # pass is: 123456
-MariaDB [(none)]> GRANT ALL ON laravel.* TO 'figlab'@'%' IDENTIFIED BY '123456';FLMariaDB [(none)]> FLUSH PRIVILEGES;
+# >> Inside mysql client
+MariaDB [(none)]> GRANT ALL ON laravel.* TO 'appuser'@'%' IDENTIFIED BY '123456';
+MariaDB [(none)]> FLUSH PRIVILEGES;
 MariaDB [(none)]> EXIT;
-# Outside db container
+# > Back in db container
 exit
 ```
- 
- > Good news - **Your project is live by now!** 
 
-Check it here:
-(Following information can be different if you've modified parameter values in `docker-compose.yml`)  
+
+> 🎉 Good News 🎉  - **Your project is live by now!** 
+
+Check it here:    
 
 - Application: http://localhost:8080/
 - Database frontend : http://localhost:8081/
@@ -109,16 +125,19 @@ Check it here:
     - application database user's password: 123456
 - Email Panel: http://localhost:8025/
 
+The information above can be different if you've modified parameter values in `docker-compose.yml`.
+
 Important Notes
 ---------------
 - **Starting with fresh Laravel**  
 
-    If you have not started (or cloned) the project yet, you can start a fresh Laravel 6 project using _ONLY_ git (no other dependencies):  
+    If you have not started (or cloned) the project yet, you can start a latest Laravel project using _ONLY_ git (no other dependencies):  
    ```shell script
    git clone https://github.com/laravel/laravel.git my-project
    cd my-project
    cp .env.example .env
    ```
+  
 - **Updating PHP configuration**
 
     `docker/php/local.ini` is being loaded with PHP ini of `app` service. So, if you need to modify/add any ini value, you can use this file.
@@ -134,7 +153,8 @@ Important Notes
         
 - **Connecting database from other database client**
 
-    To avoid conflict with local MySQL, database port mapped to `33061`. That means, if you want to connect database in container from a local database client, you have to use `33061` port.
+    To avoid conflict with local MySQL (if any), database port mapped to `33061` for localhost. 
+    That means, if you want to connect the database inside container from a database client, you have to use `33061` port.
 
 - **Selecting Image library**
 
@@ -143,7 +163,7 @@ Important Notes
 - **Add/Remove/Modify services of docker-compose**
 
     If you need to add/remove/modify any service anytime later (after `docker-compose up`), feel free to do. 
-    Just remember to run the following commands from project directory to apply the changes -
+    Just remember to run the following commands from project directory to apply your changes -
     ```shell script
     docker-compose down
     docker-compose up --force-recreate --build -d
